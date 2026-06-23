@@ -29,6 +29,7 @@
     </header>
 
     <main class="max-w-5xl mx-auto mt-8 px-4">
+        <!-- VIP BANNER -->
         <div class="glass-box-premium rounded-3xl p-6 md:p-8 flex flex-col md:flex-row items-center gap-6 shadow-2xl">
             <div class="w-24 h-24 md:w-28 md:h-28 rounded-2xl bg-slate-950/80 border-2 border-slate-700/60 overflow-hidden flex-shrink-0">
                 <img id="avatarImg" src="https://mc-heads.net/avatar/LiveBhai/120" class="w-full h-full object-cover">
@@ -49,42 +50,102 @@
             </div>
         </div>
 
-        <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mt-6">
-            <div class="glass-box rounded-3xl p-6 flex flex-col justify-between">
+        <!-- 4-COLUMN NEW GRID DESIGN -->
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mt-6">
+            
+            <!-- 1. NETWORTH -->
+            <div class="glass-box rounded-3xl p-6 flex flex-col justify-between hover:border-amber-500/40 transition-all">
                 <div>
                     <div class="flex justify-between items-center mb-3">
-                        <span class="text-xs font-extrabold text-slate-400 uppercase tracking-wider">Networth Valuation</span>
+                        <span class="text-xs font-extrabold text-slate-400 uppercase tracking-wider">Networth</span>
                         <span class="text-amber-400 text-lg">💰</span>
                     </div>
                     <div id="nwSkel" class="skeleton h-9 w-3/4 mb-2"></div>
                     <h3 id="nwTotal" class="text-2xl md:text-3xl font-black text-amber-400 tracking-tight hidden">0</h3>
-                    <span id="nwUnsoul" class="text-xs text-slate-400 hidden block mt-1">Unsoulbound: <strong class="text-slate-200 font-semibold">...</strong></span>
+                </div>
+                <div id="nwFoot" class="mt-5 pt-3 border-t border-slate-800/80 text-xs text-slate-400 hidden truncate">
+                    <span>Unsoulbound: <strong id="nwUnsoul" class="text-slate-200">...</strong></span>
                 </div>
             </div>
 
-            <div class="glass-box rounded-3xl p-6 flex flex-col justify-between">
+            <!-- 2. MAGIC POWER -->
+            <div class="glass-box rounded-3xl p-6 flex flex-col justify-between hover:border-purple-500/40 transition-all">
                 <div>
                     <div class="flex justify-between items-center mb-3">
-                        <span class="text-xs font-extrabold text-slate-400 uppercase tracking-wider">Accessory Power</span>
+                        <span class="text-xs font-extrabold text-slate-400 uppercase tracking-wider">Magic Power</span>
                         <span class="text-purple-400 text-lg">🔮</span>
                     </div>
                     <div id="mpSkel" class="skeleton h-9 w-1/2 mb-2"></div>
                     <h3 id="mpTotal" class="text-2xl md:text-3xl font-black text-purple-400 tracking-tight hidden">0</h3>
-                    <span id="mpStone" class="text-xs text-slate-400 hidden block mt-1">Power Stone: <strong class="text-purple-300 capitalize">...</strong></span>
+                </div>
+                <div id="mpFoot" class="mt-5 pt-3 border-t border-slate-800/80 text-xs text-slate-400 hidden truncate">
+                    <span>Power: <strong id="mpStone" class="text-purple-300 capitalize">...</strong></span>
                 </div>
             </div>
 
-            <div class="glass-box rounded-3xl p-6 flex flex-col justify-between">
+            <!-- 3. SKILLS -->
+            <div class="glass-box rounded-3xl p-6 flex flex-col justify-between hover:border-sky-500/40 transition-all">
                 <div>
                     <div class="flex justify-between items-center mb-3">
-                        <span class="text-xs font-extrabold text-slate-400 uppercase tracking-wider">True Skill Average</span>
+                        <span class="text-xs font-extrabold text-slate-400 uppercase tracking-wider">Skill Avg</span>
                         <span class="text-sky-400 text-lg">📊</span>
                     </div>
                     <div id="skSkel" class="skeleton h-9 w-1/2 mb-2"></div>
                     <h3 id="skAvg" class="text-2xl md:text-3xl font-black text-sky-400 tracking-tight hidden">0.0</h3>
                 </div>
-                <div class="mt-5 pt-3 border-t border-slate-800/80 text-xs text-slate-400 truncate">
-                    <span>Active Pet: <strong id="aPet" class="text-amber-300 font-bold">...</strong></span>
+                <div id="skFoot" class="mt-5 pt-3 border-t border-slate-800/80 text-xs text-emerald-400 hidden truncate">
+                    <strong>● Top Global %</strong>
+                </div>
+            </div>
+
+            <!-- 4. ACTIVE PET (NEW!) -->
+            <div class="glass-box rounded-3xl p-6 flex flex-col justify-between border-slate-800/80 hover:border-orange-500/40 transition-all">
+                <div>
+                    <div class="flex justify-between items-center mb-3">
+                        <span class="text-xs font-extrabold text-slate-400 uppercase tracking-wider">Active Pet</span>
+                        <span class="text-orange-400 text-lg">🐾</span>
+                    </div>
+                    <div id="ptSkel" class="skeleton h-12 w-full mb-2"></div>
+                    <div id="ptContent" class="hidden">
+                        <span id="ptRarity" class="text-[10px] font-bold block uppercase tracking-widest text-orange-300">...</span>
+                        <h3 id="ptName" class="text-xl md:text-2xl font-black text-white tracking-tight capitalize mt-0.5">None</h3>
+                    </div>
+                </div>
+                <div id="ptFoot" class="mt-5 pt-3 border-t border-slate-800/80 text-xs text-slate-400 hidden truncate">
+                    <span>Item: <strong id="ptItem" class="text-slate-200 capitalize">...</strong></span>
+                </div>
+            </div>
+
+            <!-- 5. DUNGEONS (WIDER) -->
+            <div class="glass-box rounded-3xl p-6 lg:col-span-2 border-slate-800/80 hover:border-red-500/40 transition-all">
+                <div class="flex justify-between items-center mb-4">
+                    <span class="text-xs font-extrabold text-slate-400 uppercase tracking-wider">Catacombs Syndicate</span>
+                    <span class="text-red-400 text-lg">⚔️</span>
+                </div>
+                <div id="dgSkel" class="skeleton h-14 w-full"></div>
+                <div id="dgGrid" class="grid grid-cols-2 md:grid-cols-4 gap-4 hidden">
+                    <div class="bg-slate-950/40 p-3 rounded-2xl border border-slate-800/60"><span class="text-[10px] text-slate-500 font-bold block">LEVEL</span><span id="dgLvl" class="text-xl font-black text-red-400">0</span></div>
+                    <div class="bg-slate-950/40 p-3 rounded-2xl border border-slate-800/60"><span class="text-[10px] text-slate-500 font-bold block">CLASS</span><span id="dgClass" class="text-xl font-black text-white capitalize">None</span></div>
+                    <div class="bg-slate-950/40 p-3 rounded-2xl border border-slate-800/60"><span class="text-[10px] text-slate-500 font-bold block">SECRETS</span><span id="dgSec" class="text-xl font-black text-amber-400">0</span></div>
+                    <div class="bg-slate-950/40 p-3 rounded-2xl border border-slate-800/60"><span class="text-[10px] text-slate-500 font-bold block">F7 / M7</span><span id="dgRuns" class="text-xl font-black text-slate-300">0 / 0</span></div>
+                </div>
+            </div>
+
+            <!-- 6. HOTM / MINING (WIDER) -->
+            <div class="glass-box rounded-3xl p-6 lg:col-span-2 border-slate-800/80 hover:border-emerald-500/40 transition-all flex flex-col justify-between">
+                <div>
+                    <div class="flex justify-between items-center mb-3">
+                        <span class="text-xs font-extrabold text-slate-400 uppercase tracking-wider">Mining • HOTM</span>
+                        <span class="text-emerald-400 text-lg">⛏️</span>
+                    </div>
+                    <div id="hmSkel" class="skeleton h-14 w-full"></div>
+                    <div id="hmContent" class="hidden">
+                        <span class="text-xs text-slate-500 font-bold block">MOUNTAIN TIER</span>
+                        <h4 class="text-2xl font-black text-emerald-400 mt-0.5">Tier <span id="hmTier">0</span></h4>
+                    </div>
+                </div>
+                <div id="hmFoot" class="mt-4 pt-3 border-t border-slate-800/80 text-xs text-slate-400 hidden truncate">
+                    <span>Ability: <strong id="hmAb" class="text-slate-200">...</strong></span>
                 </div>
             </div>
         </div>
@@ -92,8 +153,8 @@
 
     <script>
         function resetView() {
-            ['nw', 'mp', 'sk'].forEach(k => document.getElementById(k + 'Skel').classList.remove('hidden'));
-            ['nwTotal','nwUnsoul','mpTotal','mpStone','skAvg'].forEach(id => document.getElementById(id).classList.add('hidden'));
+            ['nw', 'mp', 'sk', 'pt', 'dg', 'hm'].forEach(k => document.getElementById(k + 'Skel').classList.remove('hidden'));
+            ['nwTotal','nwFoot','mpTotal','mpFoot','skAvg','skFoot','ptContent','ptFoot','dgGrid','hmContent','hmFoot'].forEach(id => document.getElementById(id).classList.add('hidden'));
         }
 
         function loadPlayer(user) {
@@ -102,36 +163,58 @@
             document.getElementById('avatarImg').src = `https://mc-heads.net/avatar/${user}/120`;
             resetView();
 
-            // SINGLE MASTER REQUEST BEATS 5 ALAG REQUESTS!
             fetch('/api/profile?name=' + encodeURIComponent(user))
             .then(r => r.json()).then(d => {
                 if(d.error) { alert(d.error); return; }
 
-                // Banner
                 document.getElementById('pBadge').innerText = d.profileName;
                 document.getElementById('sbLvl').innerText = d.skyblockLevel;
-                document.getElementById('locStatus').innerText = d.statusLocation; // e.g. 🟢 Online (Hub)
+                document.getElementById('locStatus').innerText = d.statusLocation;
                 document.getElementById('purseText').innerText = d.purseCoins + " Coins";
 
-                // Networth Card
                 document.getElementById('nwSkel').classList.add('hidden');
                 document.getElementById('nwTotal').innerText = d.networthFormatted;
-                document.querySelector('#nwUnsoul strong').innerText = d.unsoulboundFormatted;
+                document.getElementById('nwUnsoul').innerText = d.unsoulboundFormatted;
                 document.getElementById('nwTotal').classList.remove('hidden');
-                document.getElementById('nwUnsoul').classList.remove('hidden');
+                document.getElementById('nwFoot').classList.remove('hidden');
 
-                // Magic Power Card
                 document.getElementById('mpSkel').classList.add('hidden');
                 document.getElementById('mpTotal').innerText = d.magicPower;
-                document.querySelector('#mpStone strong').innerText = d.powerStone;
+                document.getElementById('mpStone').innerText = d.powerStone;
                 document.getElementById('mpTotal').classList.remove('hidden');
-                document.getElementById('mpStone').classList.remove('hidden');
+                document.getElementById('mpFoot').classList.remove('hidden');
 
-                // Skills Card
                 document.getElementById('skSkel').classList.add('hidden');
                 document.getElementById('skAvg').innerText = d.skillAverage;
-                document.getElementById('aPet').innerText = d.activePet;
                 document.getElementById('skAvg').classList.remove('hidden');
+                document.getElementById('skFoot').classList.remove('hidden');
+
+                // NEW: ACTIVE PET POPULATION
+                document.getElementById('ptSkel').classList.add('hidden');
+                
+                // Color mapping for Pet Rarity
+                const rCols = {'COMMON':'text-slate-300', 'UNCOMMON':'text-green-400', 'RARE':'text-blue-400', 'EPIC':'text-purple-400', 'LEGENDARY':'text-orange-400', 'MYTHIC':'text-pink-400'};
+                document.getElementById('ptRarity').className = `text-[10px] font-bold block uppercase tracking-widest ${rCols[d.activePetRarity] || 'text-orange-300'}`;
+                
+                document.getElementById('ptRarity').innerText = d.activePetRarity;
+                document.getElementById('ptName').innerText = d.activePetName;
+                document.getElementById('ptItem').innerText = d.activePetItem;
+                document.getElementById('ptContent').classList.remove('hidden');
+                document.getElementById('ptFoot').classList.remove('hidden');
+
+                document.getElementById('dgSkel').classList.add('hidden');
+                document.getElementById('dgLvl').innerText = d.catacombsLevel;
+                document.getElementById('dgClass').innerText = d.selectedClass;
+                document.getElementById('dgSec').innerText = (d.secretsFound || 0).toLocaleString();
+                document.getElementById('dgRuns').innerText = `${d.f7Clears} / ${d.m7Clears}`;
+                document.getElementById('dgGrid').classList.remove('hidden');
+
+                document.getElementById('hmSkel').classList.add('hidden');
+                document.getElementById('hmTier').innerText = d.hotmLevel;
+                document.getElementById('hmAb').innerText = d.hotmAbility;
+                document.getElementById('hmContent').classList.remove('hidden');
+                document.getElementById('hmFoot').classList.remove('hidden');
+
             }).catch(e => console.log(e));
         }
 
@@ -148,5 +231,4 @@
         });
     </script>
 </body>
-    </html>
-    
+</html>
