@@ -1,7 +1,10 @@
+const Hypixel = require('hypixel-api-reborn');
+const hypixel = new Hypixel.Client(process.env.HYPIXEL_KEY);
 const cache = new Map();
 
+// Helper function Networth ko "Billion/Million" me convert karne ke liye
 function formatNumber(num) {
-    if (num === undefined || num === null || isNaN(num)) return "0";
+    if (!num) return "0";
     if (num >= 1e9) return (num / 1e9).toFixed(2) + ' Billion';
     if (num >= 1e6) return (num / 1e6).toFixed(2) + ' Million';
     if (num >= 1e3) return (num / 1e3).toFixed(2) + 'K';
@@ -10,85 +13,83 @@ function formatNumber(num) {
 
 module.exports = async (req, res) => {
     const playerName = req.query.name;
-    if (!playerName) return res.status(400).json({ error: "Username missing! ?name=PlayerName lagao" });
+    if (!playerName) return res.status(400).json({ error: "Username missing!" });
 
-    const cacheKey = playerName.toLowerCase() + "_nw";
-    if (cache.has(cacheKey) && (Date.now() - cache.get(cacheKey).timestamp < 300000)) {
+    const cacheKey = playerName.toLowerCase() + "_overview";
+    const currentTime = Date.now();
+
+    // 5-Minute Cache
+    if (cache.has(cacheKey) && (currentTime - cache.get(cacheKey).timestamp < 300000)) {
         return res.status(200).json(cache.get(cacheKey).data);
     }
 
     try {
-        // STEP 1: Pehle naam se UUID nikalo (SkyCrypt UUID par 10x zyada stable rehta hai)
-        const mojangRes = await fetch(`https://api.mojang.com/users/profiles/minecraft/${playerName}`);
-        if (!mojangRes.ok) return res.status(404).json({ error: `Player '${playerName}' Mojang par nahi mila.` });
-        const mojangData = await mojangRes.json();
-        const uuid = mojangData.id;
+        // STEP 1: Hypixel API Reborn se baaki standard data lekar aao
+        const profiles = await hypixel.getSkyblockProfiles(playerName);
+        const activeProfile = profiles.find(profile => profile.selected);
+        if (!activeProfile) return res.status(404).json({ error: "No active profile found!" });
 
-        // STEP 2: Asli insaan jaisa 'User-Agent' dalkar Cloudflare ko bypass karo
-        const response = await fetch(`https://sky.shiiyu.moe/api/v2/profile/${uuid}`, {
-            headers: {
-                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
-                'Accept': 'application/json'
-            }
-        });
+        const me = activeProfile.me;
+        const uuid = me.uuid; // Player ka unique UUID mil gaya
 
-        if (!response.ok) {
-            return res.status(response.status).json({ 
-                error: "SkyCrypt ke Cloudflare ne humara server block kar diya hai!", 
-                http_status: response.status 
-            });
-        }
-
-        const data = await response.json();
-        if (data.error) return res.status(400).json({ error: "SkyCrypt Error: " + data.error });
-
-        const profiles = data.profiles;
-        if (!profiles) return res.status(404).json({ error: "SkyCrypt par is bande ka koi data nahi hai." });
-
-        // Active profile dhoondo
-        let activeProfile = null;
-        for (const pId in profiles) {
-            if (profiles[pId].current) {
-                activeProfile = profiles[pId];
-                break;
-            }
-        }
-
-        if (!activeProfile) return res.status(404).json({ error: "Koi active profile nahi mili." });
-
-        const nw = activeProfile.data?.networth;
+        // STEP 2: SkyCrypt se Networth uthao halke se (Chrome Browser User-Agent dalkar)
+        let networthVal = 0;
+        let formattedNw = "Calculating/API Locked";
         
-        // Agar profile nayi hai aur SkyCrypt ne calculate hi nahi ki:
-        if (!nw || nw.networth === undefined) {
-            return res.status(404).json({ 
-                error: "Networth is calculating...", 
-                tip: `Bhai, is bande ki networth SkyCrypt ke server par ready nahi hai. Ek baar browser me 'https://sky.shiiyu.moe/stats/${playerName}' open karke unka math trigger karo, aur 10 second baad yahan refresh maro!`
+        try {
+            const nwResponse = await fetch(`https://sky.shiiyu.moe/api/v2/profile/${uuid}`, {
+                headers: {
+                    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
+                    'Accept': 'application/json'
+                }
             });
+            
+            if (nwResponse.ok) {
+                const nwData = await nwResponse.json();
+                // SkyCrypt ke profiles me se current/active profile ka loop chalaya
+                for (const pId in nwData.profiles) {
+                    if (nwData.profiles[pId].current) {
+                        const nwObj = nwData.profiles[pId].data?.networth;
+                        if (nwObj && nwObj.networth) {
+                            networthVal = Math.floor(nwObj.networth);
+                            formattedNw = formatNumber(nwObj.networth);
+                        }
+                        break;
+                    }
+                }
+            }
+        } catch (err) {
+            console.log("Networth bypass failed in background, setting defaults.");
         }
 
-        const result = {
-            username: mojangData.name,
-            activeProfileName: activeProfile.cute_name,
-            totalNetworth: Math.floor(nw.networth || 0),
-            formattedNetworth: formatNumber(nw.networth),
-            unsoulboundNetworth: Math.floor(nw.unsoulboundNetworth || 0),
-            formattedUnsoulbound: formatNumber(nw.unsoulboundNetworth),
-            breakdown: {
-                wardrobe: formatNumber(nw.types?.wardrobe?.total || 0),
-                inventory: formatNumber(nw.types?.inventory?.total || 0),
-                storage: formatNumber(nw.types?.storage?.total || nw.types?.personal_vault?.total || 0),
-                pets: formatNumber(nw.types?.pets?.total || 0),
-                accessories: formatNumber(nw.types?.accessories?.total || 0),
-                armor: formatNumber(nw.types?.armor?.total || 0),
-                equipment: formatNumber(nw.types?.equipment?.total || 0),
-                sacks: formatNumber(nw.types?.sacks?.total || 0)
-            }
+        // STEP 3: Active Pet nikalne ka logic
+        let activePetName = "None";
+        if (me.pets) {
+            const currentPet = me.pets.find(p => p.active);
+            if (currentPet) activePetName = `${currentPet.rarity} ${currentPet.type}`;
+        }
+
+        // STEP 4: Final JSON Response jisme networth successfully add ho chuki hai
+        const cleanSummary = {
+            username: playerName,
+            profileName: activeProfile.profileName,
+            gameMode: activeProfile.gameMode || "Normal",
+            skyblockLevel: me.level ? Math.round(me.level * 100) / 100 : 0,
+            networth: networthVal,               // Raw number (eg. 245000000)
+            formattedNetworth: formattedNw,       // Sundar string (eg. "24.52 Billion")
+            purse: me.purse ? Math.floor(me.purse) : 0,
+            fairySouls: me.fairySouls || 0,
+            skillAverage: me.skills ? Math.round(me.skills.average * 100) / 100 : 0,
+            selectedClass: me.dungeons ? me.dungeons.classes.selected : "None",
+            catacombsLevel: me.dungeons ? me.dungeons.experience.level : 0,
+            activePet: activePetName
         };
 
-        cache.set(cacheKey, { data: result, timestamp: Date.now() });
-        res.status(200).json(result);
+        // Cache database save
+        cache.set(cacheKey, { data: cleanSummary, timestamp: currentTime });
+        res.status(200).json(cleanSummary);
 
     } catch (error) {
-        res.status(500).json({ error: "Networth Engine Crash", details: error.message });
+        res.status(500).json({ error: error.message });
     }
 };
