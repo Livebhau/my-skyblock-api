@@ -20,13 +20,11 @@ module.exports = async (req, res) => {
     }
 
     try {
-        // 1. UUID nikalo
         const mojangRes = await fetch(`https://api.mojang.com/users/profiles/minecraft/${playerName}`);
         if (!mojangRes.ok) return res.status(404).json({ error: "Player Mojang par nahi mila!" });
         const mojangData = await mojangRes.json();
         const uuid = mojangData.id;
 
-        // 2. Parallel Fetch: Hypixel Reborn (For Skills/Dungeons) + Status + SkyCrypt
         const [profiles, statusRes, nwRes] = await Promise.all([
             hypixel.getSkyblockProfiles(playerName, { fetchFairySouls: false }).catch(() => []),
             fetch(`https://api.hypixel.net/status?key=${process.env.HYPIXEL_KEY}&uuid=${uuid}`),
@@ -37,7 +35,6 @@ module.exports = async (req, res) => {
 
         if (!profiles || profiles.length === 0) return res.status(404).json({ error: "No SkyBlock profiles found!" });
 
-        // 3. PERFECT ACTIVE PROFILE FINDER (By Last Save)
         let activeProf = profiles[0];
         let maxSaveTime = 0;
         for (const p of profiles) {
@@ -49,7 +46,6 @@ module.exports = async (req, res) => {
 
         const me = activeProf.me;
 
-        // 4. Player Location
         let loc = "🔴 Offline";
         if (statusRes.ok) {
             const statusData = await statusRes.json();
@@ -59,13 +55,10 @@ module.exports = async (req, res) => {
             }
         }
 
-        // 5. 100% Accurate SkyCrypt Networth (Matching exact Profile ID)
         let nwStr = "0", unsoulNw = "0";
         if (nwRes && nwRes.ok) {
             const nwJson = await nwRes.json();
-            const profileIdNoDashes = activeProf.profileId.replace(/-/g, ''); // UUID format fix
-            
-            // Seedha usi profile me ghuso jo active hai
+            const profileIdNoDashes = activeProf.profileId.replace(/-/g, ''); 
             const scProfile = nwJson.profiles[profileIdNoDashes];
             if (scProfile && scProfile.data?.networth) {
                 nwStr = formatNum(scProfile.data.networth.networth);
@@ -73,15 +66,19 @@ module.exports = async (req, res) => {
             }
         }
 
-        // 6. Active Pet & MP
-        let pet = "None";
+        // --- THE PET EXTRACTOR ---
+        let petName = "None", petRarity = "COMMON", petItem = "None";
         if (me.pets) {
             const activeP = me.pets.find(p => p.active);
-            if (activeP) pet = `${activeP.rarity} ${activeP.type}`.replace(/_/g, ' ');
+            if (activeP) {
+                petRarity = activeP.tier || activeP.rarity;
+                petName = activeP.type.replace(/_/g, ' ').toLowerCase();
+                petItem = (activeP.heldItem || "None").replace(/_/g, ' ').toLowerCase();
+            }
         }
+
         let mp = me.highestMagicalPower || me.magicalPower?.total || me.accessories?.magicPower || 0;
 
-        // 7. Final Response
         const finalOutput = {
             username: mojangData.name,
             profileName: activeProf.profileName || "Profile",
@@ -93,9 +90,12 @@ module.exports = async (req, res) => {
             unsoulboundFormatted: unsoulNw,
             magicPower: mp,
             powerStone: me.accessories?.selectedPower || "None",
-            activePet: pet,
             
-            // Dungeons & HOTM Data Restored!
+            // New Pet Variables
+            activePetName: petName,
+            activePetRarity: petRarity,
+            activePetItem: petItem,
+            
             catacombsLevel: me.dungeons?.experience?.level || 0,
             selectedClass: me.dungeons?.classes?.selected || "None",
             secretsFound: me.dungeons?.secrets || 0,
