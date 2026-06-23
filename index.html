@@ -163,7 +163,7 @@
             document.getElementById('avatarImg').src = `https://mc-heads.net/avatar/${user}/120`;
             resetView();
 
-            fetch('/api/profile?name=' + encodeURIComponent(user))
+            fetch('/api/profiles?name=' + encodeURIComponent(user))
             .then(r => r.json()).then(d => {
                 if(d.error) { alert(d.error); return; }
 
