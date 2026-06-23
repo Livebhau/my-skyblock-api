@@ -1,3 +1,5 @@
+const Hypixel = require('hypixel-api-reborn');
+const hypixel = new Hypixel.Client(process.env.HYPIXEL_KEY);
 const cache = new Map();
 
 function formatNum(num) {
@@ -18,110 +20,95 @@ module.exports = async (req, res) => {
     }
 
     try {
-        const apiKey = process.env.HYPIXEL_KEY;
-
-        // 1. Get exact UUID from Mojang
+        // 1. UUID nikalo
         const mojangRes = await fetch(`https://api.mojang.com/users/profiles/minecraft/${playerName}`);
         if (!mojangRes.ok) return res.status(404).json({ error: "Player Mojang par nahi mila!" });
         const mojangData = await mojangRes.json();
         const uuid = mojangData.id;
 
-        // 2. Fetch 3 APIs simultaneously (Parallel Engine)
-        const [sbRes, statusRes, nwRes] = await Promise.all([
-            fetch(`https://api.hypixel.net/v2/skyblock/profiles?key=${apiKey}&uuid=${uuid}`),
-            fetch(`https://api.hypixel.net/status?key=${apiKey}&uuid=${uuid}`),
+        // 2. Parallel Fetch: Hypixel Reborn (For Skills/Dungeons) + Status + SkyCrypt
+        const [profiles, statusRes, nwRes] = await Promise.all([
+            hypixel.getSkyblockProfiles(playerName, { fetchFairySouls: false }).catch(() => []),
+            fetch(`https://api.hypixel.net/status?key=${process.env.HYPIXEL_KEY}&uuid=${uuid}`),
             fetch(`https://sky.shiiyu.moe/api/v2/profile/${uuid}`, {
                 headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/122.0.0.0 Safari/537.36' }
             }).catch(() => null)
         ]);
 
-        const sbData = await sbRes.json();
-        const statusData = await statusRes.json();
+        if (!profiles || profiles.length === 0) return res.status(404).json({ error: "No SkyBlock profiles found!" });
 
-        if (!sbData.success || !sbData.profiles || sbData.profiles.length === 0) {
-            return res.status(404).json({ error: "No SkyBlock profiles found!" });
-        }
-
-        // =========================================================
-        // 3. THE BULLETPROOF ACTIVE PROFILE SELECTOR (By Last Save)
-        // =========================================================
-        let activeProf = sbData.profiles[0];
+        // 3. PERFECT ACTIVE PROFILE FINDER (By Last Save)
+        let activeProf = profiles[0];
         let maxSaveTime = 0;
-
-        for (const p of sbData.profiles) {
-            const member = p.members[uuid];
-            if (member && member.last_save && member.last_save > maxSaveTime) {
-                maxSaveTime = member.last_save;
+        for (const p of profiles) {
+            if (p.me && p.me.lastSave > maxSaveTime) {
+                maxSaveTime = p.me.lastSave;
                 activeProf = p;
             }
         }
 
-        const me = activeProf.members[uuid];
+        const me = activeProf.me;
 
-        // 4. Extract Real Location
+        // 4. Player Location
         let loc = "🔴 Offline";
-        if (statusData.success && statusData.session?.online) {
-            const s = statusData.session;
-            loc = s.gameType === "SKYBLOCK" ? `🟢 Online (${s.map || "SkyBlock"})` : `🟡 Playing ${s.gameType}`;
-        }
-
-        // 5. SkyBlock Level (V2 format: leveling.experience / 100)
-        let level = 0;
-        if (me.leveling?.experience) level = (me.leveling.experience / 100).toFixed(2);
-        else if (me.player_data?.skyblock_level?.level) level = me.player_data.skyblock_level.level;
-
-        // 6. Magic Power
-        const mp = me.accessory_bag_storage?.highest_magical_power || 0;
-        const mpStone = me.accessory_bag_storage?.selected_power || "None";
-
-        // 7. Extract Networth & Skills from SkyCrypt match
-        let nwStr = "0 Coins", unsoulNw = "0", skillAvg = "0.0";
-        if (nwRes && nwRes.ok) {
-            const nwJson = await nwRes.json();
-            for (const k in nwJson.profiles) {
-                if (nwJson.profiles[k].current) {
-                    const nObj = nwJson.profiles[k].data?.networth;
-                    if (nObj) {
-                        nwStr = formatNum(nObj.networth);
-                        unsoulNw = formatNum(nObj.unsoulboundNetworth);
-                    }
-                    const skObj = nwJson.profiles[k].data?.skills?.skills;
-                    if (skObj) {
-                        let tot = 0, cnt = 0;
-                        ['mining','foraging','enchanting','farming','combat','fishing','alchemy','taming'].forEach(s => {
-                            if (skObj[s]?.level) { tot += skObj[s].level; cnt++; }
-                        });
-                        if (cnt > 0) skillAvg = (tot / cnt).toFixed(2);
-                    }
-                    break;
-                }
+        if (statusRes.ok) {
+            const statusData = await statusRes.json();
+            if (statusData.success && statusData.session?.online) {
+                const s = statusData.session;
+                loc = s.gameType === "SKYBLOCK" ? `🟢 Online (${s.mode || "SkyBlock"})` : `🟡 Playing ${s.gameType}`;
             }
         }
 
-        // 8. Active Pet
+        // 5. 100% Accurate SkyCrypt Networth (Matching exact Profile ID)
+        let nwStr = "0", unsoulNw = "0";
+        if (nwRes && nwRes.ok) {
+            const nwJson = await nwRes.json();
+            const profileIdNoDashes = activeProf.profileId.replace(/-/g, ''); // UUID format fix
+            
+            // Seedha usi profile me ghuso jo active hai
+            const scProfile = nwJson.profiles[profileIdNoDashes];
+            if (scProfile && scProfile.data?.networth) {
+                nwStr = formatNum(scProfile.data.networth.networth);
+                unsoulNw = formatNum(scProfile.data.networth.unsoulboundNetworth);
+            }
+        }
+
+        // 6. Active Pet & MP
         let pet = "None";
         if (me.pets) {
             const activeP = me.pets.find(p => p.active);
-            if (activeP) pet = `${activeP.tier || activeP.rarity} ${activeP.type}`.replace(/_/g, ' ');
+            if (activeP) pet = `${activeP.rarity} ${activeP.type}`.replace(/_/g, ' ');
         }
+        let mp = me.highestMagicalPower || me.magicalPower?.total || me.accessories?.magicPower || 0;
 
+        // 7. Final Response
         const finalOutput = {
             username: mojangData.name,
-            profileName: activeProf.cute_name || "Profile",
+            profileName: activeProf.profileName || "Profile",
             statusLocation: loc,
-            skyblockLevel: level,
-            skillAverage: skillAvg,
-            purseCoins: formatNum(me.currencies?.coin_purse || 0),
+            skyblockLevel: me.level ? (Math.round(me.level * 100) / 100) : 0,
+            skillAverage: me.skills?.average ? (Math.round(me.skills.average * 100) / 100) : 0,
+            purseCoins: formatNum(me.purse || 0),
             networthFormatted: nwStr,
             unsoulboundFormatted: unsoulNw,
             magicPower: mp,
-            powerStone: mpStone,
-            activePet: pet
+            powerStone: me.accessories?.selectedPower || "None",
+            activePet: pet,
+            
+            // Dungeons & HOTM Data Restored!
+            catacombsLevel: me.dungeons?.experience?.level || 0,
+            selectedClass: me.dungeons?.classes?.selected || "None",
+            secretsFound: me.dungeons?.secrets || 0,
+            f7Clears: me.dungeons?.completions?.catacombs?.Floor_7 || 0,
+            m7Clears: me.dungeons?.completions?.masterCatacombs?.Floor_7 || 0,
+            hotmLevel: me.hotm?.experience?.level || 0,
+            hotmAbility: me.hotm?.ability || "None"
         };
 
         cache.set(cacheKey, { data: finalOutput, timestamp: Date.now() });
         res.status(200).json(finalOutput);
 
-    } catch (e) { res.status(500).json({ error: e.message }); }
+    } catch (e) { 
+        res.status(500).json({ error: e.message }); 
+    }
 };
-            
