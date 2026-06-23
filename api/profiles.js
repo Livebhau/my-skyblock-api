@@ -2,6 +2,7 @@ const Hypixel = require('hypixel-api-reborn');
 const hypixel = new Hypixel.Client(process.env.HYPIXEL_KEY);
 const cache = new Map();
 
+// Helper: Paise ko format karne ke liye (Billion/Million)
 function formatNum(num) {
     if (!num || isNaN(num)) return "0";
     if (num >= 1e9) return (num / 1e9).toFixed(2) + 'B';
@@ -10,7 +11,12 @@ function formatNum(num) {
     return Math.floor(num).toLocaleString();
 }
 
-// Custom HOTM Level Calculator (Library ke bugs ko bypass karne ke liye)
+// Helper: UUID me dashes add karne ke liye (Hypixel ke naye update ke liye)
+function addDashes(uuid) {
+    return uuid.substr(0,8)+"-"+uuid.substr(8,4)+"-"+uuid.substr(12,4)+"-"+uuid.substr(16,4)+"-"+uuid.substr(20);
+}
+
+// Custom HOTM Calculator (Kyunki library HOTM track karne me fail ho rahi hai)
 function getHotmLevel(xp) {
     if (!xp) return 0;
     if (xp >= 1547000) return 10;
@@ -35,85 +41,113 @@ module.exports = async (req, res) => {
     }
 
     try {
+        const apiKey = process.env.HYPIXEL_KEY;
+
+        // 1. Mojang se UUID nikalo
         const mojangRes = await fetch(`https://api.mojang.com/users/profiles/minecraft/${playerName}`);
         if (!mojangRes.ok) return res.status(404).json({ error: "Player Mojang par nahi mila!" });
         const mojangData = await mojangRes.json();
         const uuid = mojangData.id;
+        const dashedUuid = addDashes(uuid); // Yeh Hypixel ke naye API structure ke liye zaroori hai
 
-        // 4 APIs PARALLEL: Hypixel Reborn + Status + SkyCrypt + RAW Hypixel API
-        const [profiles, statusRes, nwRes, rawRes] = await Promise.all([
+        // 2. Parallel Data Fetching
+        const [rebornProfiles, statusRes, nwRes, rawRes] = await Promise.all([
             hypixel.getSkyblockProfiles(playerName, { fetchFairySouls: false }).catch(() => []),
-            fetch(`https://api.hypixel.net/status?key=${process.env.HYPIXEL_KEY}&uuid=${uuid}`),
+            fetch(`https://api.hypixel.net/status?key=${apiKey}&uuid=${uuid}`).catch(() => null),
             fetch(`https://sky.shiiyu.moe/api/v2/profile/${uuid}`, {
                 headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/122.0.0.0 Safari/537.36' }
             }).catch(() => null),
-            fetch(`https://api.hypixel.net/v2/skyblock/profiles?key=${process.env.HYPIXEL_KEY}&uuid=${uuid}`).catch(() => null)
+            fetch(`https://api.hypixel.net/v2/skyblock/profiles?key=${apiKey}&uuid=${uuid}`).catch(() => null)
         ]);
 
-        if (!profiles || profiles.length === 0) return res.status(404).json({ error: "No SkyBlock profiles found!" });
-
-        let activeProf = profiles[0];
+        // 3. Raw API se 'Aakhiri baar kheli gayi' Profile uthao
+        let rawActiveProf = null;
         let maxSaveTime = 0;
-        for (const p of profiles) {
-            if (p.me && p.me.lastSave > maxSaveTime) {
-                maxSaveTime = p.me.lastSave;
-                activeProf = p;
+        let rawData = null;
+
+        if (rawRes && rawRes.ok) {
+            const rawJson = await rawRes.json();
+            if (rawJson.profiles) {
+                for (const p of rawJson.profiles) {
+                    // Hypixel ya toh normal UUID dega ya dashed UUID
+                    const member = p.members[uuid] || p.members[dashedUuid];
+                    if (member && member.last_save && member.last_save > maxSaveTime) {
+                        maxSaveTime = member.last_save;
+                        rawActiveProf = p;
+                        rawData = member; // Isme player ka saara kachha data hai
+                    }
+                }
             }
         }
 
-        const me = activeProf.me;
+        if (!rawActiveProf || !rawData) return res.status(404).json({ error: "Is player ka koi data nahi mila!" });
 
+        // 4. Status Check
         let loc = "🔴 Offline";
         if (statusRes && statusRes.ok) {
-            const statusData = await statusRes.json();
-            if (statusData.success && statusData.session?.online) {
-                const s = statusData.session;
+            const statusJson = await statusRes.json();
+            if (statusJson.success && statusJson.session?.online) {
+                const s = statusJson.session;
                 loc = s.gameType === "SKYBLOCK" ? `🟢 Online (${s.mode || "SkyBlock"})` : `🟡 Playing ${s.gameType}`;
             }
         }
 
+        // 5. SkyCrypt Networth (Strict Current Match)
         let nwStr = "0", unsoulNw = "0";
         if (nwRes && nwRes.ok) {
             const nwJson = await nwRes.json();
-            const profileIdNoDashes = activeProf.profileId.replace(/-/g, ''); 
-            const scProfile = nwJson.profiles[profileIdNoDashes];
-            if (scProfile && scProfile.data?.networth) {
-                nwStr = formatNum(scProfile.data.networth.networth);
-                unsoulNw = formatNum(scProfile.data.networth.unsoulboundNetworth);
+            if (nwJson.profiles) {
+                // Seedha us profile me jao jisme current: true likha ho
+                for (const key in nwJson.profiles) {
+                    if (nwJson.profiles[key].current) {
+                        const nData = nwJson.profiles[key].data?.networth;
+                        if (nData) {
+                            nwStr = formatNum(nData.networth);
+                            unsoulNw = formatNum(nData.unsoulboundNetworth);
+                        }
+                        break; // Milte hi loop rok do
+                    }
+                }
             }
         }
 
+        // 6. HOTM & MP directly from RAW Data (Library bypass kardi)
+        let hotmLvl = 0;
+        let hotmAb = "None";
+        const miningCore = rawData.player_data?.mining_core || rawData.mining_core;
+        if (miningCore) {
+            hotmLvl = getHotmLevel(miningCore.experience);
+            hotmAb = (miningCore.selected_pickaxe_ability || "None").replace(/_/g, ' ').toLowerCase();
+        }
+
+        const mp = rawData.accessory_bag_storage?.highest_magical_power || 0;
+        const mpStone = rawData.accessory_bag_storage?.selected_power || "None";
+        const purse = rawData.currencies?.coin_purse || 0;
+
+        // 7. Library (Reborn) se Dungeons aur Skills ka data uthao (Easy format hota hai)
+        let skAvg = 0, sbLvl = 0, cataLvl = 0, sClass = "None", sec = 0, f7 = 0, m7 = 0;
         let petName = "None", petRarity = "COMMON", petItem = "None";
-        if (me.pets) {
-            const activeP = me.pets.find(p => p.active);
-            if (activeP) {
-                petRarity = activeP.tier || activeP.rarity;
-                petName = activeP.type.replace(/_/g, ' ').toLowerCase();
-                petItem = (activeP.heldItem || "None").replace(/_/g, ' ').toLowerCase();
-            }
-        }
 
-        let mp = me.highestMagicalPower || me.magicalPower?.total || me.accessories?.magicPower || 0;
-        
-        // ==========================================
-        // THE HOTM RAW EXTRACTOR (Bypass Library)
-        // ==========================================
-        let hotmLvl = me.hotm?.experience?.level || 0;
-        let hotmAb = me.hotm?.ability || "None";
-        
-        if (rawRes && rawRes.ok) {
-            const rawJson = await rawRes.json();
-            const rawProf = rawJson.profiles?.find(p => p.profile_id.replace(/-/g, '') === activeProf.profileId.replace(/-/g, ''));
-            if (rawProf && rawProf.members[uuid]) {
-                const rm = rawProf.members[uuid];
-                // Hypixel API update fallback (player_data check)
-                const miningCore = rm.player_data?.mining_core || rm.mining_core;
-                if (miningCore) {
-                    const xp = miningCore.experience || 0;
-                    hotmLvl = getHotmLevel(xp); // Manual XP to Tier calculation
-                    
-                    if (miningCore.selected_pickaxe_ability) {
-                        hotmAb = miningCore.selected_pickaxe_ability.replace(/_/g, ' ').toLowerCase();
+        if (rebornProfiles && rebornProfiles.length > 0) {
+            // Raw Profile ID ko match karke ekdum wahi profile uthao
+            const activeReborn = rebornProfiles.find(p => p.profileId === rawActiveProf.profile_id);
+            if (activeReborn && activeReborn.me) {
+                const me = activeReborn.me;
+                sbLvl = me.level ? (Math.round(me.level * 100) / 100) : 0;
+                skAvg = me.skills?.average ? (Math.round(me.skills.average * 100) / 100) : 0;
+                
+                cataLvl = me.dungeons?.experience?.level || 0;
+                sClass = me.dungeons?.classes?.selected || "None";
+                sec = me.dungeons?.secrets || 0;
+                f7 = me.dungeons?.completions?.catacombs?.Floor_7 || 0;
+                m7 = me.dungeons?.completions?.masterCatacombs?.Floor_7 || 0;
+
+                if (me.pets) {
+                    const activeP = me.pets.find(p => p.active);
+                    if (activeP) {
+                        petRarity = activeP.tier || activeP.rarity;
+                        petName = activeP.type.replace(/_/g, ' ').toLowerCase();
+                        petItem = (activeP.heldItem || "None").replace(/_/g, ' ').toLowerCase();
                     }
                 }
             }
@@ -121,23 +155,23 @@ module.exports = async (req, res) => {
 
         const finalOutput = {
             username: mojangData.name,
-            profileName: activeProf.profileName || "Profile",
+            profileName: rawActiveProf.cute_name || "Profile",
             statusLocation: loc,
-            skyblockLevel: me.level ? (Math.round(me.level * 100) / 100) : 0,
-            skillAverage: me.skills?.average ? (Math.round(me.skills.average * 100) / 100) : 0,
-            purseCoins: formatNum(me.purse || 0),
+            skyblockLevel: sbLvl,
+            skillAverage: skAvg,
+            purseCoins: formatNum(purse),
             networthFormatted: nwStr,
             unsoulboundFormatted: unsoulNw,
             magicPower: mp,
-            powerStone: me.accessories?.selectedPower || "None",
+            powerStone: mpStone,
             activePetName: petName,
             activePetRarity: petRarity,
             activePetItem: petItem,
-            catacombsLevel: me.dungeons?.experience?.level || 0,
-            selectedClass: me.dungeons?.classes?.selected || "None",
-            secretsFound: me.dungeons?.secrets || 0,
-            f7Clears: me.dungeons?.completions?.catacombs?.Floor_7 || 0,
-            m7Clears: me.dungeons?.completions?.masterCatacombs?.Floor_7 || 0,
+            catacombsLevel: cataLvl,
+            selectedClass: sClass,
+            secretsFound: sec,
+            f7Clears: f7,
+            m7Clears: m7,
             hotmLevel: hotmLvl,
             hotmAbility: hotmAb
         };
