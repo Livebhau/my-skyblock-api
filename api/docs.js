@@ -11,8 +11,8 @@ const endpoints = [
 ];
 
 module.exports = (req, res) => {
-    // 1. Permanently aapka domain lock kar diya hamesha ke liye
-    const origin = 'https://www.liveva.me';
+    // STRICTLY NAKED DOMAIN (No 'www.')
+    const origin = 'https://liveva.me';
 
     const cardsHtml = endpoints.map((ep, i) => `
         <div class="endpoint-card" style="animation: slideUp 0.4s ease forwards ${i * 0.05}s">
@@ -96,7 +96,6 @@ module.exports = (req, res) => {
             .btn:hover { background: var(--accent); color: #000; }
             .btn.copy:hover { background: var(--success); color: #fff; }
 
-            /* Keyframe animations */
             @keyframes slideUp { from { opacity: 0; transform: translateY(25px); } to { opacity: 1; transform: translateY(0); } }
             @keyframes textBounce { 0% { transform: scale(1); background: #facc15; color: #000; } 50% { transform: scale(1.15); } 100% { transform: scale(1); } }
             .anim-bounce { animation: textBounce 0.35s ease; }
@@ -118,7 +117,7 @@ module.exports = (req, res) => {
                 <div class="pills-row">
                     <span style="color: #64748b; font-size: 0.85rem; font-weight: 600;">Presets:</span>
                     <button class="pill" onclick="setPill('LiveBhai')">LiveBhai</button>
-                    <button class="pill" onclick="setPill('itsg')">itsg (Billionaire)</button>
+                    <button class="pill" onclick="setPill('ItsGloKeR')">itsg (Billionaire)</button>
                     <button class="pill" onclick="setPill('Refraction')">Refraction (YouTuber)</button>
                 </div>
             </div>
@@ -129,7 +128,7 @@ module.exports = (req, res) => {
         </div>
 
         <script>
-            // Java Script me origin variable ko string me fix kar diya
+            // Pure Naked domain passed to client JS
             const origin = "${origin}";
 
             const input = document.getElementById('pInput');
@@ -142,18 +141,16 @@ module.exports = (req, res) => {
                 highlights.forEach(el => {
                     el.textContent = val;
                     el.classList.remove('anim-bounce');
-                    void el.offsetWidth; // Trigger DOM reflow
+                    void el.offsetWidth; 
                     el.classList.add('anim-bounce');
                 });
 
                 links.forEach(el => {
                     const base = el.getAttribute('data-path');
-                    // Ab typing karte waqt bhi liveva.me hi link me rahega
                     el.href = origin + base + '?name=' + encodeURIComponent(val);
                 });
             }
 
-            // Input event register kiya taaki typing work kare
             input.addEventListener('input', sync);
 
             function setPill(name) {
