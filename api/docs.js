@@ -125,7 +125,7 @@ module.exports = (req, res) => {
         </div>
 
         <script>
-            const origin = window.location.origin;
+            const origin = 'https://liveva.me';
             document.querySelectorAll('.base-url').forEach(el => el.textContent = origin);
 
             const input = document.getElementById('pInput');
