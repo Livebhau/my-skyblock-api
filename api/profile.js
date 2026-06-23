@@ -10,6 +10,21 @@ function formatNum(num) {
     return Math.floor(num).toLocaleString();
 }
 
+// Custom HOTM Level Calculator (Library ke bugs ko bypass karne ke liye)
+function getHotmLevel(xp) {
+    if (!xp) return 0;
+    if (xp >= 1547000) return 10;
+    if (xp >= 1147000) return 9;
+    if (xp >= 747000) return 8;
+    if (xp >= 347000) return 7;
+    if (xp >= 197000) return 6;
+    if (xp >= 97000) return 5;
+    if (xp >= 37000) return 4;
+    if (xp >= 12000) return 3;
+    if (xp >= 3000) return 2;
+    return 1;
+}
+
 module.exports = async (req, res) => {
     const playerName = req.query.name;
     if (!playerName) return res.status(400).json({ error: "Username missing!" });
@@ -25,12 +40,14 @@ module.exports = async (req, res) => {
         const mojangData = await mojangRes.json();
         const uuid = mojangData.id;
 
-        const [profiles, statusRes, nwRes] = await Promise.all([
+        // 4 APIs PARALLEL: Hypixel Reborn + Status + SkyCrypt + RAW Hypixel API
+        const [profiles, statusRes, nwRes, rawRes] = await Promise.all([
             hypixel.getSkyblockProfiles(playerName, { fetchFairySouls: false }).catch(() => []),
             fetch(`https://api.hypixel.net/status?key=${process.env.HYPIXEL_KEY}&uuid=${uuid}`),
             fetch(`https://sky.shiiyu.moe/api/v2/profile/${uuid}`, {
                 headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/122.0.0.0 Safari/537.36' }
-            }).catch(() => null)
+            }).catch(() => null),
+            fetch(`https://api.hypixel.net/v2/skyblock/profiles?key=${process.env.HYPIXEL_KEY}&uuid=${uuid}`).catch(() => null)
         ]);
 
         if (!profiles || profiles.length === 0) return res.status(404).json({ error: "No SkyBlock profiles found!" });
@@ -47,7 +64,7 @@ module.exports = async (req, res) => {
         const me = activeProf.me;
 
         let loc = "🔴 Offline";
-        if (statusRes.ok) {
+        if (statusRes && statusRes.ok) {
             const statusData = await statusRes.json();
             if (statusData.success && statusData.session?.online) {
                 const s = statusData.session;
@@ -66,7 +83,6 @@ module.exports = async (req, res) => {
             }
         }
 
-        // --- THE PET EXTRACTOR ---
         let petName = "None", petRarity = "COMMON", petItem = "None";
         if (me.pets) {
             const activeP = me.pets.find(p => p.active);
@@ -78,6 +94,30 @@ module.exports = async (req, res) => {
         }
 
         let mp = me.highestMagicalPower || me.magicalPower?.total || me.accessories?.magicPower || 0;
+        
+        // ==========================================
+        // THE HOTM RAW EXTRACTOR (Bypass Library)
+        // ==========================================
+        let hotmLvl = me.hotm?.experience?.level || 0;
+        let hotmAb = me.hotm?.ability || "None";
+        
+        if (rawRes && rawRes.ok) {
+            const rawJson = await rawRes.json();
+            const rawProf = rawJson.profiles?.find(p => p.profile_id.replace(/-/g, '') === activeProf.profileId.replace(/-/g, ''));
+            if (rawProf && rawProf.members[uuid]) {
+                const rm = rawProf.members[uuid];
+                // Hypixel API update fallback (player_data check)
+                const miningCore = rm.player_data?.mining_core || rm.mining_core;
+                if (miningCore) {
+                    const xp = miningCore.experience || 0;
+                    hotmLvl = getHotmLevel(xp); // Manual XP to Tier calculation
+                    
+                    if (miningCore.selected_pickaxe_ability) {
+                        hotmAb = miningCore.selected_pickaxe_ability.replace(/_/g, ' ').toLowerCase();
+                    }
+                }
+            }
+        }
 
         const finalOutput = {
             username: mojangData.name,
@@ -90,19 +130,16 @@ module.exports = async (req, res) => {
             unsoulboundFormatted: unsoulNw,
             magicPower: mp,
             powerStone: me.accessories?.selectedPower || "None",
-            
-            // New Pet Variables
             activePetName: petName,
             activePetRarity: petRarity,
             activePetItem: petItem,
-            
             catacombsLevel: me.dungeons?.experience?.level || 0,
             selectedClass: me.dungeons?.classes?.selected || "None",
             secretsFound: me.dungeons?.secrets || 0,
             f7Clears: me.dungeons?.completions?.catacombs?.Floor_7 || 0,
             m7Clears: me.dungeons?.completions?.masterCatacombs?.Floor_7 || 0,
-            hotmLevel: me.hotm?.experience?.level || 0,
-            hotmAbility: me.hotm?.ability || "None"
+            hotmLevel: hotmLvl,
+            hotmAbility: hotmAb
         };
 
         cache.set(cacheKey, { data: finalOutput, timestamp: Date.now() });
