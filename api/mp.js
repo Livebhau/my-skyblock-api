@@ -1,56 +1,47 @@
 const Hypixel = require('hypixel-api-reborn');
 const hypixel = new Hypixel.Client(process.env.HYPIXEL_KEY);
-
-// Yeh hamara "Mini Database" (RAM Cache) hai
 const cache = new Map();
 
 module.exports = async (req, res) => {
     const playerName = req.query.name;
-    if (!playerName) return res.status(400).json({ error: "Username missing!" });
+    if (!playerName) return res.status(400).json({ error: "Username missing! URL ke end me ?name=PlayerName lagao" });
 
-    // 'LiveBhai' aur 'livebhai' ko same manne ke liye small letters me convert kiya
-    const cacheKey = playerName.toLowerCase(); 
+    const cacheKey = playerName.toLowerCase() + "_mp";
     const currentTime = Date.now();
 
-    // ==========================================
-    // STEP 1: CHECK CACHE (Pehle RAM me dhoondo)
-    // ==========================================
-    if (cache.has(cacheKey)) {
-        const cachedData = cache.get(cacheKey);
-        const ageInMilliseconds = currentTime - cachedData.timestamp;
-
-        // 5 Minutes = 300,000 milliseconds (5 * 60 * 1000)
-        if (ageInMilliseconds < 300000) { 
-            console.log(`[⚡ CACHE HIT] ${playerName} ka data RAM se bheja!`);
-            return res.status(200).json(cachedData.data);
-        }
+    // 5-Minute Cache Check
+    if (cache.has(cacheKey) && (currentTime - cache.get(cacheKey).timestamp < 300000)) {
+        return res.status(200).json(cache.get(cacheKey).data);
     }
 
-    // ==========================================
-    // STEP 2: FETCH FRESH (Agar cache me nahi mila)
-    // ==========================================
     try {
-        console.log(`[⏳ API CALL] ${playerName} ka fresh data Hypixel se laa rahe hain...`);
         const profiles = await hypixel.getSkyblockProfiles(playerName);
         
-        const mpData = profiles.map(profile => {
-            return {
-                profileName: profile.profileName,
-                magicPower: profile.me.accessories ? profile.me.accessories.magicPower : 0,
-                selectedPower: profile.me.accessories ? profile.me.accessories.selectedPower : "None"
-            };
-        });
+        // 1. SIRF Active Profile nikalne ka strict filter
+        const activeProfile = profiles.find(profile => profile.selected === true);
 
-        // ==========================================
-        // STEP 3: SAVE TO CACHE (Agle 5 min ke liye RAM me daal do)
-        // ==========================================
-        cache.set(cacheKey, {
-            data: mpData,
-            timestamp: currentTime
-        });
+        if (!activeProfile) {
+            return res.status(404).json({ error: "Bhai, is player ki koi active profile nahi mili!" });
+        }
 
-        res.status(200).json(mpData);
+        // 2. Exact MP nikalna (Aapke data dump ke hisaab se)
+        const stats = activeProfile.me;
+        const mp = stats.highestMagicalPower || 0;
+
+        // 3. Final Clean Data
+        const result = {
+            username: playerName,
+            activeProfileName: activeProfile.profileName,
+            magicPower: mp,
+            warning: mp === 0 ? "Game me /api me jaakar INVENTORY API ON karo!" : "All Good"
+        };
+
+        // Cache me save karo
+        cache.set(cacheKey, { data: result, timestamp: currentTime });
+
+        res.status(200).json(result);
+
     } catch (error) {
-        res.status(500).json({ error: error.message });
+        res.status(500).json({ error: "API Error: " + error.message });
     }
 };
