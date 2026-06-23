@@ -11,6 +11,9 @@ const endpoints = [
 ];
 
 module.exports = (req, res) => {
+    // 1. Permanently aapka domain lock kar diya hamesha ke liye
+    const origin = 'https://www.liveva.me';
+
     const cardsHtml = endpoints.map((ep, i) => `
         <div class="endpoint-card" style="animation: slideUp 0.4s ease forwards ${i * 0.05}s">
             <div class="card-header">
@@ -20,11 +23,11 @@ module.exports = (req, res) => {
             <p class="desc">${ep.desc}</p>
             <div class="url-box">
                 <div class="url-text">
-                    <span class="base-url"></span>${ep.path}?name=<span class="user-highlight">LiveBhai</span>
+                    <span class="base-url">${origin}</span>${ep.path}?name=<span class="user-highlight">LiveBhai</span>
                 </div>
                 <div class="btn-group">
                     <button class="btn copy" onclick="copyUrl('${ep.path}', this)">📋 Copy</button>
-                    <a href="${ep.path}?name=LiveBhai" target="_blank" class="btn open-link" data-path="${ep.path}">🚀 Open</a>
+                    <a href="${origin}${ep.path}?name=LiveBhai" target="_blank" class="btn open-link" data-path="${ep.path}">🚀 Open</a>
                 </div>
             </div>
         </div>
@@ -85,7 +88,7 @@ module.exports = (req, res) => {
 
             .url-box { background: #06090f; border: 1px solid #1f2937; padding: 10px 14px; border-radius: 12px; display: flex; justify-content: space-between; align-items: center; gap: 10px; overflow-x: auto; }
             .url-text { font-family: monospace; font-size: 0.95rem; color: #64748b; white-space: nowrap; }
-            .url-text .base-url { color: var(--text-muted); }
+            .url-text .base-url { color: var(--accent); font-weight: 600; }
             .user-highlight { color: #facc15; font-weight: bold; background: rgba(250, 204, 21, 0.12); padding: 2px 6px; border-radius: 4px; display: inline-block; transition: 0.15s; }
 
             .btn-group { display: flex; gap: 8px; }
@@ -115,6 +118,7 @@ module.exports = (req, res) => {
                 <div class="pills-row">
                     <span style="color: #64748b; font-size: 0.85rem; font-weight: 600;">Presets:</span>
                     <button class="pill" onclick="setPill('LiveBhai')">LiveBhai</button>
+                    <button class="pill" onclick="setPill('itsg')">itsg (Billionaire)</button>
                     <button class="pill" onclick="setPill('Refraction')">Refraction (YouTuber)</button>
                 </div>
             </div>
@@ -125,8 +129,8 @@ module.exports = (req, res) => {
         </div>
 
         <script>
-            const origin = 'https://liveva.me';
-            document.querySelectorAll('.base-url').forEach(el => el.textContent = origin);
+            // Java Script me origin variable ko string me fix kar diya
+            const origin = "${origin}";
 
             const input = document.getElementById('pInput');
             const highlights = document.querySelectorAll('.user-highlight');
@@ -138,16 +142,18 @@ module.exports = (req, res) => {
                 highlights.forEach(el => {
                     el.textContent = val;
                     el.classList.remove('anim-bounce');
-                    void el.offsetWidth; // Trigger DOM reflow to restart animation instantly
+                    void el.offsetWidth; // Trigger DOM reflow
                     el.classList.add('anim-bounce');
                 });
 
                 links.forEach(el => {
                     const base = el.getAttribute('data-path');
+                    // Ab typing karte waqt bhi liveva.me hi link me rahega
                     el.href = origin + base + '?name=' + encodeURIComponent(val);
                 });
             }
 
+            // Input event register kiya taaki typing work kare
             input.addEventListener('input', sync);
 
             function setPill(name) {
