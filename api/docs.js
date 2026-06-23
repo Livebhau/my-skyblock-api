@@ -117,7 +117,7 @@ module.exports = (req, res) => {
                 <div class="pills-row">
                     <span style="color: #64748b; font-size: 0.85rem; font-weight: 600;">Presets:</span>
                     <button class="pill" onclick="setPill('LiveBhai')">LiveBhai</button>
-                    <button class="pill" onclick="setPill('ItsGloKeR')">itsg (Billionaire)</button>
+                    <button class="pill" onclick="setPill('ItsGloKeR')">ItsGloKeR (Billionaire)</button>
                     <button class="pill" onclick="setPill('Refraction')">Refraction (YouTuber)</button>
                 </div>
             </div>
