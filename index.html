@@ -1,0 +1,242 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LiveVA • SkyBlock Engine</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;800;900&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Plus Jakarta Sans', sans-serif; background: #070a12; color: #f1f5f9; }
+        .glass-box { background: rgba(15, 23, 42, 0.65); backdrop-filter: blur(16px); border: 1px solid rgba(255, 255, 255, 0.07); }
+        .glass-box-premium { background: linear-gradient(135deg, rgba(30, 41, 59, 0.7), rgba(15, 23, 42, 0.8)); backdrop-filter: blur(20px); border: 1px solid rgba(56, 189, 248, 0.2); }
+        
+        .mc-gold { color: #FFAA00; } .mc-aqua { color: #55FFFF; } .mc-lightpurple { color: #FF55FF; }
+        
+        @keyframes pulse-subtle { 0%, 100% { opacity: 1; } 50% { opacity: 0.4; } }
+        .skeleton { animation: pulse-subtle 1.5s infinite; background: rgba(255, 255, 255, 0.06); border-radius: 8px; }
+    </style>
+</head>
+<body class="min-h-screen pb-20">
+
+    <header class="max-w-5xl mx-auto pt-8 px-4 flex flex-col md:flex-row justify-between items-center gap-4">
+        <div class="flex items-center gap-3">
+            <div class="w-10 h-10 rounded-xl bg-sky-500 flex items-center justify-center font-black text-slate-950 text-xl shadow-lg shadow-sky-500/30">⚡</div>
+            <h1 class="text-2xl font-black tracking-wider bg-gradient-to-r from-sky-400 via-indigo-300 to-purple-400 bg-clip-text text-transparent">LIVEVA.ME</h1>
+        </div>
+
+        <form id="searchForm" class="flex w-full md:w-80 glass-box rounded-xl p-1.5 border border-slate-800 focus-within:border-sky-400 transition-all shadow-xl">
+            <input type="text" id="pInput" placeholder="Search SkyBlock Player..." class="w-full bg-transparent px-3 py-1.5 text-sm font-semibold outline-none text-white">
+            <button type="submit" class="bg-sky-500 hover:bg-sky-400 text-slate-950 font-bold px-4 py-1.5 rounded-lg text-xs tracking-wider uppercase transition-all">Inspect</button>
+        </form>
+    </header>
+
+    <main class="max-w-5xl mx-auto mt-8 px-4">
+
+        <div class="glass-box-premium rounded-3xl p-6 md:p-8 flex flex-col md:flex-row items-center gap-6 relative overflow-hidden shadow-2xl">
+            <div class="absolute -right-20 -bottom-20 w-72 h-72 bg-sky-500/10 rounded-full blur-3xl pointer-events-none"></div>
+
+            <div class="w-24 h-24 md:w-28 md:h-28 rounded-2xl bg-slate-950/80 border-2 border-slate-700/60 overflow-hidden flex-shrink-0 shadow-inner">
+                <img id="avatarImg" src="https://mc-heads.net/avatar/LiveBhai/120" alt="head" class="w-full h-full object-cover">
+            </div>
+
+            <div class="flex-1 text-center md:text-left">
+                <div class="flex flex-wrap items-center justify-center md:justify-start gap-3 mb-1">
+                    <h2 id="uName" class="text-3xl md:text-4xl font-black tracking-tight text-white">LiveBhai</h2>
+                    <span id="pBadge" class="bg-sky-500/20 border border-sky-500/30 text-sky-300 font-bold text-xs px-3 py-1 rounded-full">Profile</span>
+                </div>
+                <p class="text-slate-400 text-xs md:text-sm font-medium mt-1.5">
+                    SkyBlock Level: <span id="sbLvl" class="text-amber-400 font-bold text-base">...</span> 
+                    <span class="mx-2 text-slate-700">•</span> GameMode: <span id="gMode" class="text-slate-300 capitalize">Normal</span>
+                </p>
+            </div>
+
+            <div class="glass-box px-6 py-4 rounded-2xl border-slate-700/50 text-center flex-shrink-0 min-w-44 shadow-lg">
+                <span class="text-[10px] font-extrabold text-slate-400 tracking-widest uppercase block">Purse Cash</span>
+                <span id="purseText" class="text-xl md:text-2xl font-black mc-gold block mt-0.5">0 Coins</span>
+            </div>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mt-6">
+
+            <div class="glass-box rounded-3xl p-6 flex flex-col justify-between border-slate-800/80 hover:border-amber-500/40 transition-all group">
+                <div>
+                    <div class="flex justify-between items-center mb-3">
+                        <span class="text-xs font-extrabold text-slate-400 uppercase tracking-wider">Networth Valuation</span>
+                        <span class="text-amber-400 text-lg">💰</span>
+                    </div>
+                    <div id="nwSkel" class="skeleton h-9 w-3/4 mb-2"></div>
+                    <h3 id="nwTotal" class="text-2xl md:text-3xl font-black text-amber-400 tracking-tight hidden">0</h3>
+                    <span id="nwUnsoul" class="text-xs text-slate-400 hidden block mt-1">Unsoulbound: <strong class="text-slate-200 font-semibold">...</strong></span>
+                </div>
+                <div id="nwBreak" class="mt-5 pt-3 border-t border-slate-800/80 flex justify-between text-xs text-slate-400 hidden">
+                    <span>Wardrobe: <strong id="nwWard" class="text-slate-200">0</strong></span>
+                    <span>Pets: <strong id="nwPets" class="text-slate-200">0</strong></span>
+                </div>
+            </div>
+
+            <div class="glass-box rounded-3xl p-6 flex flex-col justify-between border-slate-800/80 hover:border-purple-500/40 transition-all group">
+                <div>
+                    <div class="flex justify-between items-center mb-3">
+                        <span class="text-xs font-extrabold text-slate-400 uppercase tracking-wider">Accessory Power</span>
+                        <span class="text-purple-400 text-lg">🔮</span>
+                    </div>
+                    <div id="mpSkel" class="skeleton h-9 w-1/2 mb-2"></div>
+                    <h3 id="mpTotal" class="text-2xl md:text-3xl font-black text-purple-400 tracking-tight hidden">0</h3>
+                    <span id="mpStone" class="text-xs text-slate-400 hidden block mt-1">Power Stone: <strong class="text-purple-300 capitalize">...</strong></span>
+                </div>
+                <div class="mt-5 pt-3 border-t border-slate-800/80 flex justify-between text-xs text-slate-400">
+                    <span class="text-emerald-400 font-semibold">● Engine Online</span>
+                </div>
+            </div>
+
+            <div class="glass-box rounded-3xl p-6 flex flex-col justify-between border-slate-800/80 hover:border-sky-500/40 transition-all group">
+                <div>
+                    <div class="flex justify-between items-center mb-3">
+                        <span class="text-xs font-extrabold text-slate-400 uppercase tracking-wider">True Skill Average</span>
+                        <span class="text-sky-400 text-lg">📊</span>
+                    </div>
+                    <div id="skSkel" class="skeleton h-9 w-1/2 mb-2"></div>
+                    <h3 id="skAvg" class="text-2xl md:text-3xl font-black text-sky-400 tracking-tight hidden">0.0</h3>
+                </div>
+                <div class="mt-5 pt-3 border-t border-slate-800/80 text-xs text-slate-400 truncate">
+                    <span>Active Pet: <strong id="aPet" class="text-amber-300 font-bold truncate">...</strong></span>
+                </div>
+            </div>
+
+            <div class="glass-box rounded-3xl p-6 md:col-span-2 border-slate-800/80 hover:border-red-500/40 transition-all">
+                <div class="flex justify-between items-center mb-4">
+                    <span class="text-xs font-extrabold text-slate-400 uppercase tracking-wider">Catacombs Syndicate</span>
+                    <span class="text-red-400 text-lg">⚔️</span>
+                </div>
+                <div id="dgSkel" class="skeleton h-14 w-full"></div>
+                <div id="dgGrid" class="grid grid-cols-2 md:grid-cols-4 gap-4 hidden">
+                    <div class="bg-slate-950/40 p-3 rounded-2xl border border-slate-800/60"><span class="text-[10px] text-slate-500 font-bold block">CATA LEVEL</span><span id="dgLvl" class="text-xl font-black text-red-400">0</span></div>
+                    <div class="bg-slate-950/40 p-3 rounded-2xl border border-slate-800/60"><span class="text-[10px] text-slate-500 font-bold block">MAIN CLASS</span><span id="dgClass" class="text-xl font-black text-white capitalize">None</span></div>
+                    <div class="bg-slate-950/40 p-3 rounded-2xl border border-slate-800/60"><span class="text-[10px] text-slate-500 font-bold block">SECRETS</span><span id="dgSec" class="text-xl font-black text-amber-400">0</span></div>
+                    <div class="bg-slate-950/40 p-3 rounded-2xl border border-slate-800/60"><span class="text-[10px] text-slate-500 font-bold block">F7 / M7 RUNS</span><span id="dgRuns" class="text-xl font-black text-slate-300">0 / 0</span></div>
+                </div>
+            </div>
+
+            <div class="glass-box rounded-3xl p-6 border-slate-800/80 hover:border-emerald-500/40 transition-all flex flex-col justify-between">
+                <div>
+                    <div class="flex justify-between items-center mb-3">
+                        <span class="text-xs font-extrabold text-slate-400 uppercase tracking-wider">Mining • HOTM</span>
+                        <span class="text-emerald-400 text-lg">⛏️</span>
+                    </div>
+                    <div id="hmSkel" class="skeleton h-14 w-full"></div>
+                    <div id="hmContent" class="hidden">
+                        <span class="text-xs text-slate-500 font-bold block">MOUNTAIN TIER</span>
+                        <h4 class="text-2xl font-black text-emerald-400 mt-0.5">Tier <span id="hmTier">0</span></h4>
+                    </div>
+                </div>
+                <div id="hmFoot" class="mt-4 pt-3 border-t border-slate-800/80 text-xs text-slate-400 hidden truncate">
+                    <span>Ability: <strong id="hmAb" class="text-slate-200">...</strong></span>
+                </div>
+            </div>
+
+        </div>
+    </main>
+
+    <script>
+        function formatCash(n) {
+            if (!n || isNaN(n)) return "0";
+            if (n >= 1e9) return (n / 1e9).toFixed(2) + "B";
+            if (n >= 1e6) return (n / 1e6).toFixed(2) + "M";
+            if (n >= 1e3) return (n / 1e3).toFixed(1) + "K";
+            return n.toLocaleString();
+        }
+
+        function showSkeletons() {
+            ['nw', 'mp', 'sk', 'dg', 'hm'].forEach(k => {
+                const sk = document.getElementById(k + 'Skel');
+                if(sk) sk.classList.remove('hidden');
+            });
+            ['nwTotal','nwUnsoul','nwBreak','mpTotal','mpStone','skAvg','dgGrid','hmContent','hmFoot'].forEach(id => {
+                document.getElementById(id).classList.add('hidden');
+            });
+        }
+
+        async function triggerEngine(user) {
+            document.getElementById('uName').innerText = user;
+            document.getElementById('pInput').value = user;
+            document.getElementById('avatarImg').src = `https://mc-heads.net/avatar/${user}/120`;
+            showSkeletons();
+
+            // 1. Fetch Overview
+            fetch('/api/profile?name=' + user).then(r => r.json()).then(d => {
+                if(d.error) return;
+                document.getElementById('pBadge').innerText = d.profileName || "Profile";
+                document.getElementById('sbLvl').innerText = d.skyblockLevel || "0";
+                document.getElementById('gMode').innerText = d.gameMode || "Normal";
+                document.getElementById('purseText').innerText = formatCash(d.purse) + " Coins";
+                document.getElementById('skAvg').innerText = d.skillAverage || "0.0";
+                document.getElementById('aPet').innerText = d.activePet || "None";
+                
+                document.getElementById('skSkel').classList.add('hidden');
+                document.getElementById('skAvg').classList.remove('hidden');
+            }).catch(() => {});
+
+            // 2. Fetch Networth
+            fetch('/api/networth?name=' + user).then(r => r.json()).then(d => {
+                document.getElementById('nwSkel').classList.add('hidden');
+                if(!d.error && d.formattedNetworth) {
+                    document.getElementById('nwTotal').innerText = d.formattedNetworth;
+                    document.querySelector('#nwUnsoul strong').innerText = d.formattedUnsoulbound || "0";
+                    document.getElementById('nwWard').innerText = d.breakdown?.wardrobe || "0";
+                    document.getElementById('nwPets').innerText = d.breakdown?.pets || "0";
+                    
+                    document.getElementById('nwUnsoul').classList.remove('hidden');
+                    document.getElementById('nwBreak').classList.remove('hidden');
+                } else {
+                    document.getElementById('nwTotal').innerText = "API Locked";
+                }
+                document.getElementById('nwTotal').classList.remove('hidden');
+            }).catch(() => {});
+
+            // 3. Fetch MP
+            fetch('/api/mp?name=' + user).then(r => r.json()).then(d => {
+                document.getElementById('mpSkel').classList.add('hidden');
+                document.getElementById('mpTotal').innerText = d.magicPower || "0";
+                document.querySelector('#mpStone strong').innerText = d.selectedPower || "None";
+                
+                document.getElementById('mpTotal').classList.remove('hidden');
+                document.getElementById('mpStone').classList.remove('hidden');
+            }).catch(() => {});
+
+            // 4. Fetch Dungeons
+            fetch('/api/dungeons?name=' + user).then(r => r.json()).then(d => {
+                document.getElementById('dgSkel').classList.add('hidden');
+                document.getElementById('dgLvl').innerText = d.catacombsLevel || "0";
+                document.getElementById('dgClass').innerText = d.selectedClass || "None";
+                document.getElementById('dgSec').innerText = (d.secretsFound || 0).toLocaleString();
+                document.getElementById('dgRuns').innerText = `${d.f7Clears || 0} / ${d.m7Clears || 0}`;
+                document.getElementById('dgGrid').classList.remove('hidden');
+            }).catch(() => {});
+
+            // 5. Fetch HOTM
+            fetch('/api/hotm?name=' + user).then(r => r.json()).then(d => {
+                document.getElementById('hmSkel').classList.add('hidden');
+                document.getElementById('hmTier').innerText = d.hotmLevel || "0";
+                document.getElementById('hmAb').innerText = d.selectedAbility || "None";
+                document.getElementById('hmContent').classList.remove('hidden');
+                document.getElementById('hmFoot').classList.remove('hidden');
+            }).catch(() => {});
+        }
+
+        // On Page Load: get ?name= parameter
+        const param = new URLSearchParams(window.location.search).get('name') || 'LiveBhai';
+        triggerEngine(param);
+
+        // Handle Search Bar submit live
+        document.getElementById('searchForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+            const val = document.getElementById('pInput').value.trim();
+            if(!val) return;
+            window.history.pushState({}, '', '/?name=' + encodeURIComponent(val));
+            triggerEngine(val);
+        });
+    </script>
+</body>
+  </html>
+      
