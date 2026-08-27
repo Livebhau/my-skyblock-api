@@ -1,14 +1,13 @@
-const axios = require('axios');
-
 module.exports = async (req, res) => {
     try {
-        const response = await axios.get('https://api.liveva.me/auctions', {
+        // Axios ki jagah native 'fetch' use kar rahe hain (Bina kisi extra package ke)
+        const response = await fetch('https://api.liveva.me/auctions', {
             headers: { 
                 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
             }
         });
         
-        const auctionsData = response.data;
+        const auctionsData = await response.json();
         const results = [];
 
         for (const [key, stats] of Object.entries(auctionsData)) {
