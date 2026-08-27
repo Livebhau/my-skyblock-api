@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LiveVA Auctions</title>
+    <link rel="icon" href="data:,">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body { background-color: #0f172a; color: #f8fafc; }
+        ::-webkit-scrollbar { width: 8px; }
+        ::-webkit-scrollbar-track { background: #1e293b; }
+        ::-webkit-scrollbar-thumb { background: #475569; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: #64748b; }
+        .card-hover { transition: all 0.2s ease-in-out; }
+        .card-hover:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.5);
+            border-color: #eab308;
+        }
+    </style>
+</head>
+<body class="min-h-screen p-4 md:p-6 font-sans">
+
+    <div class="max-w-7xl mx-auto">
+        <!-- 🔥 STICKY Header & Search Box 🔥 -->
+        <div class="sticky top-2 z-50 flex flex-col md:flex-row justify-between items-center mb-8 gap-4 bg-slate-800/80 backdrop-blur-xl p-6 rounded-2xl border border-slate-600 shadow-2xl transition-all">
+            <div>
+                <h1 class="text-3xl font-extrabold bg-clip-text text-transparent bg-gradient-to-r from-yellow-400 to-orange-500">
+                    LiveVA Auctions
+                </h1>
+                <p class="text-slate-300 text-sm mt-1 font-medium">Real-time Hypixel SkyBlock Market Data</p>
+            </div>
+            <div class="w-full md:w-1/2 lg:w-1/3 relative">
+                <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                    <svg class="h-5 w-5 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
+                </div>
+                <input type="text" id="searchInput" placeholder="Search any item (e.g., Hyperion)..." class="w-full pl-10 pr-4 py-3 rounded-xl bg-slate-900/90 border border-slate-500 focus:border-yellow-500 focus:ring-1 focus:ring-yellow-500 outline-none text-white shadow-inner transition-all placeholder-slate-400">
+            </div>
+        </div>
+
+        <!-- Loader -->
+        <div id="loader" class="flex flex-col justify-center items-center py-20">
+            <div class="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-yellow-500 mb-4"></div>
+            <p class="text-slate-400 animate-pulse font-medium">Loading LiveVA Data...</p>
+        </div>
+
+        <!-- Grid -->
+        <div id="itemsGrid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 hidden"></div>
+    </div>
+
+    <script>
+        let allItems = [];
+
+        const formatCoins = (num) => {
+            if (num === undefined || num === null) return "0";
+            return num.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+        };
+
+        const renderCards = (items) => {
+            const grid = document.getElementById('itemsGrid');
+            grid.innerHTML = ''; 
+
+            if (items.length === 0) {
+                grid.innerHTML = `<div class="col-span-full text-center py-20 bg-slate-800/30 rounded-2xl border border-slate-700 border-dashed"><p class="text-slate-400 text-lg">No items found matching your search.</p></div>`;
+                return;
+            }
+
+            items.forEach(item => {
+                const card = document.createElement('div');
+                card.className = "bg-slate-800 rounded-2xl p-5 border border-slate-700 card-hover flex flex-col shadow-lg";
+                
+                card.innerHTML = `
+                    <div class="mb-5 border-b border-slate-700 pb-4">
+                        <h2 class="text-xl font-bold text-slate-100 leading-tight line-clamp-2">${item.name}</h2>
+                        <span class="text-[11px] font-bold text-yellow-400/90 bg-yellow-400/10 px-2 py-1 rounded-md mt-2 inline-block border border-yellow-400/20 uppercase tracking-wide">
+                            Live Auction
+                        </span>
+                    </div>
+                    
+                    <div class="space-y-2 mt-auto">
+                        <div class="flex justify-between items-center bg-slate-900/50 px-3 py-2 rounded-lg border border-slate-700/50">
+                            <span class="text-slate-400 text-xs uppercase font-bold tracking-wider">Lowest</span>
+                            <span class="text-emerald-400 font-bold">${formatCoins(item.lowest)}</span>
+                        </div>
+                        <div class="flex justify-between items-center bg-slate-900/50 px-3 py-2 rounded-lg border border-slate-700/50">
+                            <span class="text-slate-400 text-xs uppercase font-bold tracking-wider">Mean</span>
+                            <span class="text-yellow-400 font-bold">${formatCoins(item.mean)}</span>
+                        </div>
+                        <div class="flex justify-between items-center bg-slate-900/50 px-3 py-2 rounded-lg border border-slate-700/50">
+                            <span class="text-slate-400 text-xs uppercase font-bold tracking-wider">Highest</span>
+                            <span class="text-rose-400 font-bold">${formatCoins(item.highest)}</span>
+                        </div>
+                    </div>
+                `;
+                grid.appendChild(card);
+            });
+        };
+
+        const fetchData = async () => {
+            try {
+                const res = await fetch('/api/items');
+                const data = await res.json();
+                
+                if (!res.ok || data.error) throw new Error(data.error || "Server error");
+
+                if (Array.isArray(data)) {
+                    allItems = data; 
+                    
+                    document.getElementById('loader').classList.add('hidden');
+                    document.getElementById('itemsGrid').classList.remove('hidden');
+                    
+                    renderCards(allItems); 
+                }
+            } catch (error) {
+                console.error("Error:", error);
+                document.getElementById('loader').innerHTML = `
+                    <div class="text-center bg-rose-900/20 p-6 rounded-2xl border border-rose-500 max-w-md shadow-lg">
+                        <h3 class="text-xl font-bold text-rose-400 mb-2">Failed to Load Data</h3>
+                        <p class="text-sm text-rose-200">Backend server check kijiye.</p>
+                    </div>`;
+            }
+        };
+
+        document.getElementById('searchInput').addEventListener('input', (e) => {
+            const query = e.target.value.toLowerCase().trim(); 
+            if (!allItems || allItems.length === 0) return; 
+            if (query === "") { renderCards(allItems); return; }
+            const filtered = allItems.filter(item => item.name && item.name.toLowerCase().includes(query));
+            renderCards(filtered);
+        });
+
+        fetchData();
+    </script>
+</body>
+</html>
