@@ -1,11 +1,10 @@
 {
-  "name": "skyblock-api",
-  "version": "1.0.0",
-  "dependencies": {
-    "axios": "^1.6.8",
-    "cors": "^2.8.5",
-    "dotenv": "^16.4.5",
-    "express": "^4.19.2",
-    "hypixel-api-reborn": "latest"
-  }
+  "name": "skyblock-api",
+  "version": "1.0.0",
+  "scripts": {
+    "start": "node"
+  },
+  "dependencies": {
+    "hypixel-api-reborn": "latest"
+  }
 }
