@@ -120,7 +120,6 @@
 
                 const formattedData = [];
 
-                // 🔥 MAIN FIX: Raw Object ko Array of Objects me convert karna 🔥
                 for (const [key, stats] of Object.entries(rawData)) {
                     let displayName = key;
 
@@ -134,7 +133,6 @@
                         displayName = key.replace(/:\d+/g, '').replace(/_/g, ' '); 
                     }
 
-                    // Title Case (Hyperion, Enderman Pet, etc.)
                     displayName = displayName.toLowerCase().replace(/\b\w/g, c => c.toUpperCase());
                     
                     formattedData.push({
