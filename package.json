@@ -1,0 +1,7 @@
+{
+  "name": "skyblock-api",
+  "version": "1.0.0",
+  "dependencies": {
+    "hypixel-api-reborn": "latest"
+  }
+}
