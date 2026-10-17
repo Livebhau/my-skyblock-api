@@ -12,6 +12,7 @@ module.exports = async (req, res) => {
     try {
         const profiles = await hypixel.getSkyblockProfiles(playerName);
         console.log(profiles);
+        console.log("hi");
         const activeProfile = profiles.find(p => p.selected);
         if (!activeProfile) return res.status(404).json({ error: "Active profile not found!" });
 
